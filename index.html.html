@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Compras - Solo Expediciones</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        expediciones: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                            accent: '#22d3ee'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Top Bar: Selector de Rol y Simulador de Vistas -->
+    <div id="role-selector-bar" class="bg-slate-900 text-white text-xs py-2 px-4 border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="bg-expediciones-500 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Modo Vista / Rol</span>
+                <span id="current-role-label" class="text-slate-300 font-medium">Panel Completo (Administrador)</span>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-1.5">
+                <button onclick="setModeHash('solicitante')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded border border-slate-700 transition flex items-center gap-1">
+                    <i class="fa-solid fa-user-pen text-[10px]"></i> Vista Trabajador (#solicitante)
+                </button>
+                <button onclick="setModeHash('jefatura')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded border border-slate-700 transition flex items-center gap-1">
+                    <i class="fa-solid fa-user-check text-[10px]"></i> Portal Jefatura (#jefatura)
+                </button>
+                <button onclick="setModeHash('compras')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded border border-slate-700 transition flex items-center gap-1">
+                    <i class="fa-solid fa-boxes-packing text-[10px]"></i> Central Compras (#compras)
+                </button>
+                <button onclick="setModeHash('admin')" class="px-2.5 py-1 bg-expediciones-800 hover:bg-expediciones-700 text-white rounded font-medium transition flex items-center gap-1">
+                    <i class="fa-solid fa-[#admin] fa-sliders text-[10px]"></i> Ver Todo (#admin)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header / Navbar Principal -->
+    <header id="main-header" class="bg-gradient-to-r from-expediciones-900 via-expediciones-800 to-slate-900 text-white shadow-lg z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-20">
+                <!-- Branding -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white p-2.5 rounded-xl shadow-md flex items-center justify-center w-12 h-12">
+                        <i class="fa-solid fa-compass text-expediciones-800 text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-extrabold tracking-tight text-white leading-tight">SOLO EXPEDICIONES</h1>
+                        <p class="text-xs text-expediciones-accent font-semibold tracking-wider uppercase">Central de Compras & Requerimientos</p>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs (Oculto en modo solo solicitante) -->
+                <nav id="main-nav" class="hidden md:flex space-x-1 bg-expediciones-900/80 p-1.5 rounded-xl border border-white/10">
+                    <button onclick="switchTab('solicitud')" id="tab-solicitud" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 bg-expediciones-500 text-white shadow">
+                        <i class="fa-solid fa-file-pen"></i> Nueva Solicitud
+                    </button>
+                    <button onclick="switchTab('jefatura')" id="tab-jefatura" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                        <i class="fa-solid fa-user-check"></i> Portal Jefatura
+                        <span id="badge-pendientes" class="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold hidden">0</span>
+                    </button>
+                    <button onclick="switchTab('compras')" id="tab-compras" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                        <i class="fa-solid fa-boxes-packing"></i> Central Compras
+                        <span id="badge-aprobados" class="bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold hidden">0</span>
+                    </button>
+                    <button onclick="switchTab('correos')" id="tab-correos" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 text-slate-300 hover:text-white hover:bg-white/10">
+                        <i class="fa-solid fa-envelope-open-text"></i> Log Correos
+                        <span id="badge-correos" class="bg-cyan-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">0</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Banner para Copiar Enlace Directo (Solo visible en admin o vista general) -->
+    <div id="share-banner" class="bg-white border-b border-slate-200 py-3 px-4 shadow-sm">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-expediciones-50 text-expediciones-800 flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-share-nodes"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800">¿Deseas enviar el formulario a los trabajadores?</h4>
+                    <p class="text-slate-500">Copia el enlace directo para que ingresen pedidos sin ver las pestañas ni otros módulos.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="copyShareableLink('solicitante')" class="px-3.5 py-2 bg-expediciones-800 hover:bg-expediciones-900 text-white font-semibold rounded-lg shadow-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-copy"></i> Copiar Enlace para Trabajadores
+                </button>
+                <button onclick="copyShareableLink('jefatura')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-link"></i> Link Jefaturas
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- Toast Notification Global -->
+        <div id="toast-notification" class="hidden mb-6 bg-slate-900 text-white p-4 rounded-xl shadow-xl border-l-4 border-expediciones-accent flex items-start justify-between transition-all">
+            <div class="flex items-start gap-3">
+                <div class="bg-expediciones-500/20 text-expediciones-accent p-2 rounded-lg">
+                    <i class="fa-solid fa-paper-plane text-lg"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm text-white" id="toast-title">Notificación</h4>
+                    <p class="text-xs text-slate-300 mt-0.5" id="toast-message">Detalle de la acción realizada.</p>
+                </div>
+            </div>
+            <button onclick="dismissToast()" class="text-slate-400 hover:text-white text-sm">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- VISTA 1: NUEVA SOLICITUD DE PEDIDO -->
+        <section id="view-solicitud" class="view-panel transition-opacity">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Guía Lateral -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h2 class="text-base font-bold text-expediciones-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-info text-expediciones-500"></i> Flujo de Autorización
+                        </h2>
+                        <ul class="space-y-4 text-xs">
+                            <li class="flex items-start gap-3">
+                                <span class="w-6 h-6 rounded-full bg-expediciones-100 text-expediciones-800 font-bold flex items-center justify-center shrink-0">1</span>
+                                <div>
+                                    <strong class="text-slate-800 block">Ingreso de Requerimiento</strong>
+                                    <span class="text-slate-500">Detalla los productos o servicios requeridos con sus cantidades y especificaciones.</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center shrink-0">2</span>
+                                <div>
+                                    <strong class="text-slate-800 block">Revisión por Jefatura Directa</strong>
+                                    <span class="text-slate-500">Se notifica por correo a la jefatura seleccionada (ej: Diego Guenul) para su validación.</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center shrink-0">3</span>
+                                <div>
+                                    <strong class="text-slate-800 block">Envío a Central de Compras</strong>
+                                    <span class="text-slate-500">Al ser aprobado, llega automáticamente a <span class="font-mono text-expediciones-800">adquisiciones2@soloexpediciones.com</span>.</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-gradient-to-br from-expediciones-900 to-expediciones-800 text-white p-6 rounded-2xl shadow-sm">
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="fa-solid fa-headset text-xl text-expediciones-accent"></i>
+                            <h3 class="font-bold text-sm">Contacto Adquisiciones</h3>
+                        </div>
+                        <p class="text-xs text-slate-200 leading-relaxed">
+                            Si tienes dudas sobre especificaciones de un insumo o cotizaciones previas, puedes comunicarte directamente con la central.
+                        </p>
+                        <div class="mt-4 pt-3 border-t border-white/10 text-xs font-mono space-y-1 text-cyan-200">
+                            <div><i class="fa-solid fa-envelope mr-1"></i> adquisiciones2@soloexpediciones.com</div>
+                            <div><i class="fa-solid fa-user-shield mr-1"></i> Diego Guenul - Adquisiciones</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario Principal -->
+                <div class="lg:col-span-2">
+                    <form id="order-form" onsubmit="handleFormSubmit(event)" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="border-b border-slate-100 bg-slate-50 p-6">
+                            <h2 class="text-lg font-bold text-slate-800">Solicitud de Pedido - Solo Expediciones</h2>
+                            <p class="text-xs text-slate-500 mt-0.5">Ingresa los datos solicitados. Tu jefatura directa recibirá un correo para aprobar la compra.</p>
+                        </div>
+
+                        <div class="p-6 space-y-6">
+                            <!-- Datos del Solicitante y Jefatura -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                        1. Nombre del Solicitante <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" id="solicitante" required placeholder="Ej: Juan Pérez" 
+                                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-expediciones-500 focus:bg-white transition">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                        Email del Solicitante <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="email" id="emailSolicitante" required placeholder="jperez@soloexpediciones.com" 
+                                        class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-expediciones-500 focus:bg-white transition">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                        2. Centro de Costo <span class="text-red-500">*</span>
+                                    </label>
+                                    <select id="centroCosto" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-expediciones-500 focus:bg-white transition">
+                                        <option value="" disabled selected>Seleccione Centro de Costo</option>
+                                        <option value="Operaciones Marítimas">Operaciones Marítimas</option>
+                                        <option value="Logística y Bodega">Logística y Bodega</option>
+                                        <option value="Guiado y Excursiones">Guiado y Excursiones</option>
+                                        <option value="Mantenimiento Flota">Mantenimiento Flota</option>
+                                        <option value="Administración y Finanzas">Administración y Finanzas</option>
+                                        <option value="Seguridad y Prevención">Seguridad y Prevención</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                        3. Jefatura Directa <span class="text-red-500">*</span>
+                                    </label>
+                                    <select id="jefatura" required onchange="updateJefeHint()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-expediciones-500 focus:bg-white transition">
+                                        <option value="" disabled selected>Seleccione Jefatura Aprobadora</option>
+                                        <option value="Diego Guenul|adquisiciones@soloexpediciones.com">Diego Guenul - adquisiciones@soloexpediciones.com</option>
+                                        <option value="Pedro Soto|operaciones@soloexpediciones.com">Pedro Soto - Operaciones</option>
+                                        <option value="María Contreras|finanzas@soloexpediciones.com">María Contreras - Finanzas & Admin</option>
+                                        <option value="Carlos Morales|mantenimiento@soloexpediciones.com">Carlos Morales - Mantenimiento</option>
+                                    </select>
+                                    <p id="jefe-hint" class="text-[11px] text-expediciones-800 font-mono mt-1 hidden"></p>
+                                </div>
+                            </div>
+
+                            <!-- Tabla de Ítems Solicitados -->
+                            <div class="pt-4 border-t border-slate-100">
+                                <div class="flex items-center justify-between mb-3">
+                                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                        4. Detalle de lo Solicitado <span class="text-red-500">*</span>
+                                    </label>
+                                    <button type="button" onclick="addItemRow()" class="px-3 py-1.5 bg-expediciones-50 text-expediciones-800 hover:bg-expediciones-100 border border-expediciones-200 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+                                        <i class="fa-solid fa-plus"></i> Agregar Ítem
+                                    </button>
+                                </div>
+
+                                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                                    <table class="w-full text-left text-xs">
+                                        <thead class="bg-slate-100 text-slate-600 uppercase font-semibold">
+                                            <tr>
+                                                <th class="p-3 w-5/12">Producto / Servicio</th>
+                                                <th class="p-3 w-2/12 text-center">Cant.</th>
+                                                <th class="p-3 w-2/12">Unidad</th>
+                                                <th class="p-3 w-3/12">Detalle / Especificación</th>
+                                                <th class="p-3 text-center w-1/12"><i class="fa-solid fa-trash"></i></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="items-table-body" class="divide-y divide-slate-200 bg-white">
+                                            <!-- Filas agregadas dinámicamente -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-end">
+                            <button type="submit" class="px-6 py-3 bg-gradient-to-r from-expediciones-800 to-expediciones-900 hover:from-expediciones-900 hover:to-slate-900 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center gap-2">
+                                <i class="fa-solid fa-paper-plane"></i> Enviar Pedido a Jefatura
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA 2: PORTAL DE JEFATURA -->
+        <section id="view-jefatura" class="view-panel hidden transition-opacity">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800">Portal de Aprobaciones de Jefatura</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Autoriza o rechaza los requerimientos emitidos por tu equipo antes de derivarse a compras.</p>
+                </div>
+                <div class="flex items-center gap-2 bg-amber-50 text-amber-800 border border-amber-200 px-3.5 py-2 rounded-xl text-xs font-semibold">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Pendientes: <strong id="pendientes-count-badge" class="ml-1 text-sm">0</strong></span>
+                </div>
+            </div>
+
+            <div id="jefatura-list" class="space-y-4">
+                <!-- Se puebla con JS -->
+            </div>
+        </section>
+
+        <!-- VISTA 3: CENTRAL DE COMPRAS -->
+        <section id="view-compras" class="view-panel hidden transition-opacity">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="bg-emerald-100 text-emerald-800 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase">Bandeja Oficial</span>
+                            <h2 class="text-lg font-bold text-slate-800">Central de Compras Solo Expediciones</h2>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Bandeja oficial: <span class="font-mono text-expediciones-800 font-bold">adquisiciones2@soloexpediciones.com</span> (Muestra únicamente pedidos <strong>Aprobados por Jefatura</strong>).
+                        </p>
+                    </div>
+                    <div>
+                        <select id="filter-compras-status" onchange="renderComprasView()" class="bg-slate-50 border border-slate-300 text-xs rounded-lg p-2 font-medium">
+                            <option value="ALL">Todos los Estados</option>
+                            <option value="EN_PREPARACION">En Preparación / Cotizando</option>
+                            <option value="COMPRADO">Comprado</option>
+                            <option value="DESPACHADO">Despachado / Entregado</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="compras-list" class="space-y-4">
+                <!-- Se puebla con JS -->
+            </div>
+        </section>
+
+        <!-- VISTA 4: LOG SIMULADOR DE CORREOS -->
+        <section id="view-correos" class="view-panel hidden transition-opacity">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="bg-slate-900 text-white p-6 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-server text-cyan-400"></i> Servidor SMTP - Registro de Correos Enviados
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Historial en tiempo real de notificaciones a jefaturas, solicitantes y compras.</p>
+                    </div>
+                    <button onclick="clearEmailLogs()" class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-slate-300 transition">
+                        Limpiar Registro
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div id="email-log-container" class="space-y-3 max-h-[600px] overflow-y-auto custom-scrollbar">
+                        <!-- Items de log -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal para Leer Correo Completo -->
+    <div id="email-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+            <div class="bg-slate-900 text-white p-4 flex items-center justify-between">
+                <div class="flex items-center gap-2 text-sm font-bold">
+                    <i class="fa-solid fa-envelope-open text-cyan-400"></i>
+                    <span>Detalle de Correo Electrónico</span>
+                </div>
+                <button onclick="closeEmailModal()" class="text-slate-400 hover:text-white text-base">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4 text-xs" id="email-modal-body">
+                <!-- Contenido modal -->
+            </div>
+            <div class="bg-slate-50 p-4 border-t border-slate-200 text-right">
+                <button onclick="closeEmailModal()" class="px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-900">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Compartir Link -->
+    <div id="share-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-slate-200 p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-slate-800 text-base" id="share-modal-title">Enlace de Compartir</h3>
+                <button onclick="closeShareModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-xs text-slate-500 mb-3" id="share-modal-desc">Comparte este enlace con tu personal:</p>
+            <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 font-mono text-xs text-slate-700 break-all mb-4" id="share-modal-url">
+                <!-- URL hash -->
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeShareModal()" class="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg">Cerrar</button>
+                <button onclick="executeCopyModalUrl()" class="px-4 py-2 bg-expediciones-800 text-white text-xs font-semibold rounded-lg hover:bg-expediciones-900">
+                    <i class="fa-solid fa-copy mr-1"></i> Copiar URL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        // State Management
+        let orders = JSON.parse(localStorage.getItem('expediciones_orders')) || [
+            {
+                id: "EXP-1001",
+                solicitante: "Gonzalo Alarcón",
+                emailSolicitante: "galarcon@soloexpediciones.com",
+                centroCosto: "Operaciones Marítimas",
+                jefeNombre: "Diego Guenul",
+                jefeEmail: "adquisiciones@soloexpediciones.com",
+                fecha: new Date(Date.now() - 3600000 * 4).toISOString(),
+                estado: "PENDIENTE_JEFATURA",
+                comentariosJefatura: "",
+                estadoCompra: "PENDIENTE",
+                items: [
+                    { producto: "Chalecos Salvavidas SOLAS Aprobados", cantidad: 6, unidad: "Unidades", obs: "Para embarcaciones de excursión" },
+                    { producto: "Bengalas Marítimas de Mano", cantidad: 4, unidad: "Kits", obs: "Renovación por fecha vencimiento" }
+                ]
+            },
+            {
+                id: "EXP-1002",
+                solicitante: "Patricia Fuentes",
+                emailSolicitante: "pfuentes@soloexpediciones.com",
+                centroCosto: "Logística y Bodega",
+                jefeNombre: "Pedro Soto",
+                jefeEmail: "operaciones@soloexpediciones.com",
+                fecha: new Date(Date.now() - 3600000 * 24).toISOString(),
+                estado: "APROBADO",
+                comentariosJefatura: "Aprobado para mantención preventiva de la flota.",
+                estadoCompra: "EN_PREPARACION",
+                items: [
+                    { producto: "Aceite de Motor 15W40 Sintético", cantidad: 20, unidad: "Litros", obs: "Para mantenimiento vans" }
+                ]
+            }
+        ];
+
+        let emailLogs = JSON.parse(localStorage.getItem('expediciones_emails')) || [];
+
+        // App Initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            if(emailLogs.length === 0) {
+                logEmail(
+                    "Notificación de Nueva Solicitud PENDIENTE",
+                    "adquisiciones@soloexpediciones.com",
+                    "EXP-1001",
+                    "Diego Guenul",
+                    "Estimado Diego Guenul,\n\nSe ha generado la solicitud EXP-1001 requerida por Gonzalo Alarcón (Operaciones Marítimas).\n\nIngrese al portal de Jefatura para revisar y aprobar la compra."
+                );
+            }
+
+            // Listen to Hash Changes
+            window.addEventListener('hashchange', handleHashRouting);
+
+            // Initial setup
+            addItemRow();
+            handleHashRouting();
+            renderJefaturaView();
+            renderComprasView();
+            renderEmailLogs();
+            updateBadges();
+        });
+
+        function saveData() {
+            localStorage.setItem('expediciones_orders', JSON.stringify(orders));
+            localStorage.setItem('expediciones_emails', JSON.stringify(emailLogs));
+        }
+
+        // Routing through URL HASH (#solicitante, #jefatura, #compras, #admin)
+        function handleHashRouting() {
+            const hash = window.location.hash.replace('#', '').toLowerCase();
+            
+            const roleLabel = document.getElementById('current-role-label');
+            const mainHeader = document.getElementById('main-header');
+            const mainNav = document.getElementById('main-nav');
+            const shareBanner = document.getElementById('share-banner');
+
+            if(hash === 'solicitante') {
+                roleLabel.textContent = "Vista Única Trabajador (Formulario)";
+                mainNav.classList.add('hidden');
+                shareBanner.classList.add('hidden');
+                switchTab('solicitud');
+            } else if(hash === 'jefatura') {
+                roleLabel.textContent = "Portal Jefaturas (Aprobaciones)";
+                mainNav.classList.remove('hidden');
+                shareBanner.classList.add('hidden');
+                switchTab('jefatura');
+            } else if(hash === 'compras') {
+                roleLabel.textContent = "Central de Compras (adquisiciones2@soloexpediciones.com)";
+                mainNav.classList.remove('hidden');
+                shareBanner.classList.add('hidden');
+                switchTab('compras');
+            } else {
+                // Admin or Default View
+                roleLabel.textContent = "Panel Completo (Administrador)";
+                mainNav.classList.remove('hidden');
+                shareBanner.classList.remove('hidden');
+                if(!document.querySelector('.view-panel:not(.hidden)')) {
+                    switchTab('solicitud');
+                }
+            }
+        }
+
+        function setModeHash(mode) {
+            window.location.hash = mode;
+        }
+
+        // Share Link helper
+        function copyShareableLink(mode) {
+            const baseUrl = window.location.href.split('#')[0];
+            const fullUrl = `${baseUrl}#${mode}`;
+
+            document.getElementById('share-modal-title').textContent = mode === 'solicitante' ? "Enlace para Trabajadores" : "Enlace Portal Jefaturas";
+            document.getElementById('share-modal-desc').textContent = "Envía esta dirección para dar acceso directo a esta vista:";
+            document.getElementById('share-modal-url').textContent = fullUrl;
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.add('hidden');
+        }
+
+        function executeCopyModalUrl() {
+            const urlText = document.getElementById('share-modal-url').textContent;
+            
+            if(navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(urlText);
+            } else {
+                const temp = document.createElement("input");
+                temp.value = urlText;
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand("copy");
+                document.body.removeChild(temp);
+            }
+            closeShareModal();
+            showToast("¡Enlace Copiado!", "La URL directa fue copiada a tu portapapeles.", "cyan");
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-expediciones-500', 'text-white', 'shadow');
+                btn.classList.add('text-slate-300');
+            });
+
+            const targetView = document.getElementById(`view-${tabId}`);
+            if(targetView) targetView.classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.add('bg-expediciones-500', 'text-white', 'shadow');
+                activeBtn.classList.remove('text-slate-300');
+            }
+        }
+
+        // Add / Remove Form Rows
+        function addItemRow(prod = '', cant = 1, uni = 'Unidades', obs = '') {
+            const tbody = document.getElementById('items-table-body');
+            const rowId = 'row-' + Date.now() + Math.random().toString(36).substring(2, 4);
+
+            const tr = document.createElement('tr');
+            tr.id = rowId;
+            tr.className = 'hover:bg-slate-50 transition';
+            tr.innerHTML = `
+                <td class="p-2">
+                    <input type="text" required placeholder="Ej: Neumáticos 235/85 R16" value="${prod}" class="item-prod w-full p-2 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-expediciones-500">
+                </td>
+                <td class="p-2">
+                    <input type="number" min="1" required value="${cant}" class="item-cant w-full p-2 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-expediciones-500 text-center font-bold">
+                </td>
+                <td class="p-2">
+                    <select class="item-uni w-full p-2 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-expediciones-500">
+                        <option value="Unidades" ${uni==='Unidades'?'selected':''}>Unidades</option>
+                        <option value="Cajas" ${uni==='Cajas'?'selected':''}>Cajas</option>
+                        <option value="Litros" ${uni==='Litros'?'selected':''}>Litros</option>
+                        <option value="Metros" ${uni==='Metros'?'selected':''}>Metros</option>
+                        <option value="Servicio" ${uni==='Servicio'?'selected':''}>Servicio</option>
+                        <option value="Kits" ${uni==='Kits'?'selected':''}>Kits</option>
+                    </select>
+                </td>
+                <td class="p-2">
+                    <input type="text" placeholder="Observación / Especificación técnica" value="${obs}" class="item-obs w-full p-2 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-expediciones-500">
+                </td>
+                <td class="p-2 text-center">
+                    <button type="button" onclick="removeItemRow('${rowId}')" class="text-red-400 hover:text-red-600 p-1 transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function removeItemRow(rowId) {
+            const tbody = document.getElementById('items-table-body');
+            if (tbody.children.length > 1) {
+                document.getElementById(rowId).remove();
+            } else {
+                showToast("Atención", "La solicitud debe tener al menos 1 producto.", "amber");
+            }
+        }
+
+        function updateJefeHint() {
+            const select = document.getElementById('jefatura');
+            const hint = document.getElementById('jefe-hint');
+            if(select.value) {
+                const [nombre, email] = select.value.split('|');
+                hint.textContent = `Correo destino notificación: ${email}`;
+                hint.classList.remove('hidden');
+            } else {
+                hint.classList.add('hidden');
+            }
+        }
+
+        // Form Submit
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const solicitante = document.getElementById('solicitante').value.trim();
+            const emailSolicitante = document.getElementById('emailSolicitante').value.trim();
+            const centroCosto = document.getElementById('centroCosto').value;
+            const jefeVal = document.getElementById('jefatura').value;
+            
+            if(!jefeVal) return;
+            const [jefeNombre, jefeEmail] = jefeVal.split('|');
+
+            const rows = document.querySelectorAll('#items-table-body tr');
+            const items = [];
+            rows.forEach(r => {
+                const prod = r.querySelector('.item-prod').value.trim();
+                const cant = r.querySelector('.item-cant').value;
+                const uni = r.querySelector('.item-uni').value;
+                const obs = r.querySelector('.item-obs').value.trim();
+
+                if(prod) items.push({ producto: prod, cantidad: cant, unidad: uni, obs });
+            });
+
+            if(items.length === 0) {
+                showToast("Error", "Debes ingresar al menos un ítem.", "red");
+                return;
+            }
+
+            const newId = `EXP-${Math.floor(1000 + Math.random() * 9000)}`;
+            const newOrder = {
+                id: newId,
+                solicitante,
+                emailSolicitante,
+                centroCosto,
+                jefeNombre,
+                jefeEmail,
+                fecha: new Date().toISOString(),
+                estado: "PENDIENTE_JEFATURA",
+                comentariosJefatura: "",
+                estadoCompra: "PENDIENTE",
+                items
+            };
+
+            orders.unshift(newOrder);
+
+            // Email Notification to Jefatura
+            logEmail(
+                `NUEVA SOLICITUD DE COMPRA PENDIENTE DE APROBACIÓN [${newId}]`,
+                jefeEmail,
+                newId,
+                jefeNombre,
+                `Estimado/a ${jefeNombre},\n\nEl trabajador **${solicitante}** (${emailSolicitante}) ha ingresado la solicitud **${newId}** para el centro de costo **${centroCosto}**.\n\nRequiere su revisión y aprobación para ser derivada a la Central de Compras (adquisiciones2@soloexpediciones.com).`
+            );
+
+            saveData();
+
+            showToast(
+                "¡Solicitud Enviada con Éxito!", 
+                `Se ha enviado una notificación a su jefatura directa ${jefeNombre} (${jefeEmail}).`, 
+                "emerald"
+            );
+
+            // Reset Form
+            document.getElementById('order-form').reset();
+            document.getElementById('items-table-body').innerHTML = '';
+            document.getElementById('jefe-hint').classList.add('hidden');
+            addItemRow();
+
+            renderJefaturaView();
+            updateBadges();
+
+            // Si está en admin, cambia a Jefatura tras 1.2s
+            if(!window.location.hash || window.location.hash === '#admin') {
+                setTimeout(() => switchTab('jefatura'), 1200);
+            }
+        }
+
+        // Process Approval / Rejection by Jefatura
+        function processApproval(orderId, isApproved) {
+            const commentInput = document.getElementById(`comment-${orderId}`);
+            const comentarios = commentInput ? commentInput.value.trim() : '';
+
+            const order = orders.find(o => o.id === orderId);
+            if(!order) return;
+
+            if(isApproved) {
+                order.estado = "APROBADO";
+                order.estadoCompra = "EN_PREPARACION";
+                order.comentariosJefatura = comentarios || "Aprobado por jefatura directa.";
+
+                // Email a Central de Compras (adquisiciones2@soloexpediciones.com)
+                logEmail(
+                    `PEDIDO APROBADO POR JEFATURA - LISTO PARA COMPRA [${order.id}]`,
+                    "adquisiciones2@soloexpediciones.com",
+                    order.id,
+                    "Central de Compras Solo Expediciones",
+                    `CONFIRMACIÓN DE COMPRA APROBADA:\n\nEl requerimiento **${order.id}** ha sido **APROBADO** por la jefatura directiva (${order.jefeNombre}).\n\n- Solicitante: ${order.solicitante}\n- Centro de Costo: ${order.centroCosto}\n- Observación Jefatura: ${order.comentariosJefatura}\n\nEl pedido ya está disponible en el panel de Adquisiciones.`
+                );
+
+                // Email de confirmación al Solicitante
+                logEmail(
+                    `SU SOLICITUD DE COMPRA FUE APROBADA [${order.id}]`,
+                    order.emailSolicitante,
+                    order.id,
+                    order.solicitante,
+                    `Hola ${order.solicitante},\n\nTu pedido **${order.id}** fue APROBADO por tu jefatura (${order.jefeNombre}) y enviado a la Central de Compras (adquisiciones2@soloexpediciones.com) para su gestión.`
+                );
+
+                showToast(
+                    "Pedido Aprobado", 
+                    "Se envió la confirmación a adquisiciones2@soloexpediciones.com y al trabajador.", 
+                    "emerald"
+                );
+            } else {
+                order.estado = "RECHAZADO";
+                order.comentariosJefatura = comentarios || "Rechazado por la jefatura directa.";
+
+                // Email Rechazo al Solicitante
+                logEmail(
+                    `SOLICITUD DE COMPRA RECHAZADA [${order.id}]`,
+                    order.emailSolicitante,
+                    order.id,
+                    order.solicitante,
+                    `Estimado/a ${order.solicitante},\n\nSu solicitud **${order.id}** ha sido RECHAZADA por la jefatura.\n\nMotivo/Comentario: ${order.comentariosJefatura}`
+                );
+
+                showToast("Pedido Rechazado", "Se notificado la decisión al solicitante por correo.", "amber");
+            }
+
+            saveData();
+            renderJefaturaView();
+            renderComprasView();
+            updateBadges();
+        }
+
+        // Update Status in Central de Compras
+        function updateOrderStatus(orderId, newStatus) {
+            const order = orders.find(o => o.id === orderId);
+            if(order) {
+                order.estadoCompra = newStatus;
+                saveData();
+                renderComprasView();
+                
+                let label = newStatus;
+                if(newStatus === 'EN_PREPARACION') label = 'En Preparación / Cotizando';
+                if(newStatus === 'COMPRADO') label = 'Comprado / Adquirido';
+                if(newStatus === 'DESPACHADO') label = 'Despachado / Entregado';
+
+                logEmail(
+                    `ACTUALIZACIÓN DE ESTADO DE COMPRA [${order.id}]`,
+                    order.emailSolicitante,
+                    order.id,
+                    order.solicitante,
+                    `Hola ${order.solicitante},\n\nLa Central de Compras ha actualizado el estado de tu requerimiento **${order.id}** a: **${label}**.`
+                );
+
+                showToast("Estado Actualizado", `Pedido ${order.id} actualizado a ${label}. Notificación enviada.`, "sky");
+            }
+        }
+
+        // Render Views Functions
+        function renderJefaturaView() {
+            const container = document.getElementById('jefatura-list');
+            const pendientes = orders.filter(o => o.estado === "PENDIENTE_JEFATURA");
+
+            if(pendientes.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl p-12 text-center border border-slate-200">
+                        <div class="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-800">No hay solicitudes pendientes</h3>
+                        <p class="text-xs text-slate-500 mt-1">Todas las solicitudes asignadas a las jefaturas han sido procesadas.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = pendientes.map(o => `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition hover:shadow-md">
+                    <div class="flex flex-col md:flex-row justify-between md:items-center gap-2 pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <span class="bg-amber-100 text-amber-800 text-[11px] px-2.5 py-1 rounded-full font-bold">Pendiente Aprobación</span>
+                            <span class="text-xs text-slate-400 font-mono">#${o.id}</span>
+                        </div>
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-calendar mr-1"></i> ${new Date(o.fecha).toLocaleString()}</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4 text-xs">
+                        <div>
+                            <span class="text-slate-400 block font-medium">Solicitante:</span>
+                            <strong class="text-slate-800 text-sm">${o.solicitante}</strong>
+                            <div class="text-slate-500 font-mono text-[11px]">${o.emailSolicitante}</div>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block font-medium">Centro de Costo:</span>
+                            <strong class="text-slate-800 text-sm">${o.centroCosto}</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block font-medium">Jefatura Asignada:</span>
+                            <strong class="text-expediciones-800 text-sm">${o.jefeNombre}</strong>
+                            <div class="text-slate-500 font-mono text-[11px]">${o.jefeEmail}</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200/80 mb-4">
+                        <h4 class="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">Detalle del Pedido:</h4>
+                        <ul class="divide-y divide-slate-200 text-xs">
+                            ${o.items.map(it => `
+                                <li class="py-2 flex justify-between items-start">
+                                    <div>
+                                        <span class="font-bold text-slate-800">${it.producto}</span>
+                                        ${it.obs ? `<p class="text-[11px] text-slate-500 italic mt-0.5">${it.obs}</p>` : ''}
+                                    </div>
+                                    <span class="bg-white px-2 py-1 rounded border border-slate-200 font-mono font-bold text-slate-700">
+                                        ${it.cantidad} ${it.unidad}
+                                    </span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100 space-y-3">
+                        <input type="text" id="comment-${o.id}" placeholder="Comentario u observación opcional..." 
+                            class="w-full text-xs p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-expediciones-500">
+                        
+                        <div class="flex items-center justify-end gap-3">
+                            <button onclick="processApproval('${o.id}', false)" class="px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-xmark"></i> Rechazar
+                            </button>
+                            <button onclick="processApproval('${o.id}', true)" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-check"></i> Aprobar y Enviar a Central Compras
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderComprasView() {
+            const container = document.getElementById('compras-list');
+            const filter = document.getElementById('filter-compras-status').value;
+            
+            let aprobados = orders.filter(o => o.estado === "APROBADO");
+
+            if(filter !== 'ALL') {
+                aprobados = aprobados.filter(o => o.estadoCompra === filter);
+            }
+
+            if(aprobados.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl p-12 text-center border border-slate-200">
+                        <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                            <i class="fa-solid fa-inbox"></i>
+                        </div>
+                        <h3 class="text-base font-bold text-slate-800">No hay pedidos autorizados para compras</h3>
+                        <p class="text-xs text-slate-500 mt-1">Las solicitudes aprobadas por las jefaturas aparecerán automáticamente en esta bandeja.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = aprobados.map(o => `
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 transition hover:shadow-md">
+                    <div class="flex flex-col md:flex-row justify-between md:items-center gap-2 pb-4 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <span class="bg-emerald-100 text-emerald-800 text-[11px] px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check"></i> Aprobado por ${o.jefeNombre}
+                            </span>
+                            <span class="text-xs text-slate-400 font-mono">#${o.id}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500 font-medium">Estado Gestión Compra:</span>
+                            <select onchange="updateOrderStatus('${o.id}', this.value)" class="text-xs font-semibold p-1.5 rounded-lg border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-expediciones-500">
+                                <option value="EN_PREPARACION" ${o.estadoCompra === 'EN_PREPARACION' ? 'selected' : ''}>En Preparación / Cotizando</option>
+                                <option value="COMPRADO" ${o.estadoCompra === 'COMPRADO' ? 'selected' : ''}>Comprado / En Tránsito</option>
+                                <option value="DESPACHADO" ${o.estadoCompra === 'DESPACHADO' ? 'selected' : ''}>Despachado / Entregado</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 my-4 text-xs">
+                        <div>
+                            <span class="text-slate-400 block font-medium">Solicitante:</span>
+                            <strong class="text-slate-800">${o.solicitante}</strong>
+                            <div class="text-slate-500 font-mono text-[11px]">${o.emailSolicitante}</div>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block font-medium">Centro Costo:</span>
+                            <strong class="text-slate-800">${o.centroCosto}</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block font-medium">Jefatura Autorizadora:</span>
+                            <strong class="text-slate-800">${o.jefeNombre}</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block font-medium">Observación Jefatura:</span>
+                            <p class="text-slate-600 italic bg-slate-50 p-1.5 rounded border border-slate-200/50">${o.comentariosJefatura || 'Sin observaciones'}</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200/70">
+                        <h4 class="text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">Ítems a Adquirir:</h4>
+                        <table class="w-full text-left text-xs">
+                            <thead class="text-slate-500 border-b border-slate-200">
+                                <tr>
+                                    <th class="py-1">Producto</th>
+                                    <th class="py-1 text-center">Cantidad</th>
+                                    <th class="py-1">Especificación</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-200/60">
+                                ${o.items.map(it => `
+                                    <tr>
+                                        <td class="py-2 font-bold text-slate-800">${it.producto}</td>
+                                        <td class="py-2 text-center font-mono font-bold">${it.cantidad} ${it.unidad}</td>
+                                        <td class="py-2 text-slate-500">${it.obs || '-'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Email Logging System
+        function logEmail(asunto, destinatario, orderId, destinatarioNombre, cuerpo) {
+            const newLog = {
+                id: Date.now() + Math.random().toString(36).substring(2, 4),
+                fecha: new Date().toLocaleString(),
+                asunto,
+                destinatario,
+                destinatarioNombre,
+                orderId,
+                cuerpo
+            };
+            emailLogs.unshift(newLog);
+            saveData();
+            renderEmailLogs();
+            updateBadges();
+        }
+
+        function renderEmailLogs() {
+            const container = document.getElementById('email-log-container');
+            if(emailLogs.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-8">No se han registrado notificaciones enviadas.</p>`;
+                return;
+            }
+
+            container.innerHTML = emailLogs.map(log => `
+                <div class="bg-slate-800 border border-slate-700 rounded-xl p-3.5 text-xs font-mono text-slate-300 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded font-bold text-[10px]">SMTP SENT</span>
+                            <span class="text-white font-semibold">${log.asunto}</span>
+                        </div>
+                        <div class="text-slate-400 text-[11px]">
+                            Para: <span class="text-cyan-300 font-bold">${log.destinatario}</span> (${log.destinatarioNombre}) | Ref: <span class="text-amber-300">#${log.orderId}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] text-slate-400">${log.fecha}</span>
+                        <button onclick='openEmailModal(${JSON.stringify(log)})' class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded-md transition font-sans flex items-center gap-1 font-semibold">
+                            <i class="fa-solid fa-eye"></i> Leer Correo
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function clearEmailLogs() {
+            emailLogs = [];
+            saveData();
+            renderEmailLogs();
+            updateBadges();
+        }
+
+        function openEmailModal(log) {
+            const modal = document.getElementById('email-modal');
+            const body = document.getElementById('email-modal-body');
+
+            body.innerHTML = `
+                <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 space-y-1 font-mono text-xs">
+                    <div><strong>De:</strong> sistema.pedidos@soloexpediciones.com</div>
+                    <div><strong>Para:</strong> ${log.destinatario} (${log.destinatarioNombre})</div>
+                    <div><strong>Fecha:</strong> ${log.fecha}</div>
+                    <div><strong>Asunto:</strong> ${log.asunto}</div>
+                </div>
+
+                <div class="p-4 bg-white rounded-xl border border-slate-200 whitespace-pre-wrap font-sans text-slate-700 text-xs leading-relaxed">
+${log.cuerpo}
+                </div>
+
+                <div class="text-[11px] text-slate-400 italic">
+                    * Notificación automática enviada por la Central de Compras de Solo Expediciones.
+                </div>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeEmailModal() {
+            document.getElementById('email-modal').classList.add('hidden');
+        }
+
+        // Helpers
+        function updateBadges() {
+            const pendientes = orders.filter(o => o.estado === "PENDIENTE_JEFATURA").length;
+            const aprobados = orders.filter(o => o.estado === "APROBADO").length;
+
+            document.getElementById('pendientes-count-badge').textContent = pendientes;
+
+            const bPend = document.getElementById('badge-pendientes');
+            if(pendientes > 0) {
+                bPend.textContent = pendientes;
+                bPend.classList.remove('hidden');
+            } else {
+                bPend.classList.add('hidden');
+            }
+
+            const bAprob = document.getElementById('badge-aprobados');
+            if(aprobados > 0) {
+                bAprob.textContent = aprobados;
+                bAprob.classList.remove('hidden');
+            } else {
+                bAprob.classList.add('hidden');
+            }
+
+            document.getElementById('badge-correos').textContent = emailLogs.length;
+        }
+
+        function showToast(title, message, color = "sky") {
+            const toast = document.getElementById('toast-notification');
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-message').textContent = message;
+
+            toast.classList.remove('hidden');
+            setTimeout(() => dismissToast(), 6000);
+        }
+
+        function dismissToast() {
+            document.getElementById('toast-notification').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
